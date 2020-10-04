@@ -49,9 +49,7 @@ using namespace time_literals;
 
 Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us) :
 	ModuleParams(parent),
-	_index(index < 1 || index > 9 ? 1 : index),
-	_warning(battery_status_s::BATTERY_WARNING_NONE),
-	_last_timestamp(0)
+	_index(index < 1 || index > 9 ? 1 : index)
 {
 	const float expected_filter_dt = static_cast<float>(sample_interval_us) / 1_s;
 	_voltage_filter_v.setParameters(expected_filter_dt, 1.f);
@@ -105,8 +103,7 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us) 
 	updateParams();
 }
 
-void
-Battery::reset()
+void Battery::reset()
 {
 	memset(&_battery_status, 0, sizeof(_battery_status));
 	_battery_status.current_a = -1.f;
@@ -121,13 +118,10 @@ Battery::reset()
 	_battery_status.id = (uint8_t) _index;
 }
 
-void
-Battery::updateBatteryStatus(hrt_abstime timestamp, float voltage_v, float current_a,
-			     bool connected, int source, int priority,
-			     float throttle_normalized)
+void Battery::updateBatteryStatus(const hrt_abstime &timestamp, float voltage_v, float current_a, bool connected,
+				  int source, int priority, float throttle_normalized)
 {
 	reset();
-	_battery_status.timestamp = timestamp;
 
 	if (!_battery_initialized) {
 		_voltage_filter_v.reset(voltage_v);
@@ -169,24 +163,14 @@ Battery::updateBatteryStatus(hrt_abstime timestamp, float voltage_v, float curre
 		}
 	}
 
-	_battery_status.timestamp = timestamp;
+	_battery_status.timestamp = hrt_absolute_time();
 
-	const bool should_publish = (source == _params.source);
-
-	if (should_publish) {
+	if (source == _params.source) {
 		_battery_status_pub.publish(_battery_status);
-		publish();
 	}
 }
 
-void
-Battery::publish()
-{
-	_battery_status_pub.publish(_battery_status);
-}
-
-void
-Battery::sumDischarged(hrt_abstime timestamp, float current_a)
+void Battery::sumDischarged(const hrt_abstime &timestamp, float current_a)
 {
 	// Not a valid measurement
 	if (current_a < 0.f) {
